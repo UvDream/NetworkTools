@@ -7,7 +7,10 @@ let package = Package(
     targets: [
         .executableTarget(
             name: "NetworkRouter",
-            path: "Sources/NetworkRouter"
+            path: "Sources/NetworkRouter",
+            resources: [
+                .process("Resources")
+            ]
         ),
     ]
 )

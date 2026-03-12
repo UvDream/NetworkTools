@@ -208,6 +208,7 @@ class NetworkManager: ObservableObject {
     }
     
     /// 将配置的路由规则与真实的系统路由表比对，自动修正开关状态
+    /// 以系统路由表为准：系统有就开，系统没有就关
     func syncRulesWithSystem() {
         DispatchQueue.global(qos: .userInitiated).async { [weak self] in
             guard let self = self else { return }
@@ -225,7 +226,6 @@ class NetworkManager: ObservableObject {
             
             DispatchQueue.main.async {
                 var updated = false
-                var missingRulesToApply: [RouteRule] = []
                 
                 for i in 0..<self.routeRules.count {
                     let dest = self.routeRules[i].destination
@@ -233,10 +233,11 @@ class NetworkManager: ObservableObject {
                     let isActuallyInSystem = systemDestinations.contains(dest)
                     
                     if self.routeRules[i].isEnabled && !isActuallyInSystem {
-                        // 设为启用，但系统里没有（可能是重启后丢失了），需要自动补全
-                        missingRulesToApply.append(self.routeRules[i])
+                        // 持久化标记为启用，但系统里没有（重启后丢失了），同步状态为关闭
+                        self.routeRules[i].isEnabled = false
+                        updated = true
                     } else if !self.routeRules[i].isEnabled && isActuallyInSystem {
-                        // 设为关闭，但系统里竟然有（可能在命令行里手加的），同步状态为开启
+                        // 持久化标记为关闭，但系统里有（可能在命令行里手加的），同步状态为开启
                         self.routeRules[i].isEnabled = true
                         updated = true
                     }
@@ -244,11 +245,6 @@ class NetworkManager: ObservableObject {
                 
                 if updated {
                     self.saveRules()
-                }
-                
-                // 立即应用那些系统里丢失的规则
-                if !missingRulesToApply.isEmpty {
-                    self.batchAddRoutes(missingRulesToApply)
                 }
             }
         }

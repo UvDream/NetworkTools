@@ -163,6 +163,12 @@ struct RouteRuleRow: View {
                 .onChange(of: isEnabled) { _, newValue in
                     onToggle(newValue)
                 }
+                .onChange(of: rule.isEnabled) { _, newValue in
+                    // 当外部（如系统同步）更新了 rule.isEnabled 时，同步到内部 @State
+                    if isEnabled != newValue {
+                        isEnabled = newValue
+                    }
+                }
             
             // 规则信息
             VStack(alignment: .leading, spacing: 4) {
